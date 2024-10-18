@@ -3692,7 +3692,8 @@ void Interface_UpdateMagicBar(PlayState* play) {
                 (msgCtx->msgMode == MSGMODE_NONE) && (play->gameOverCtx.state == GAMEOVER_INACTIVE) &&
                 (play->transitionTrigger == TRANS_TRIGGER_OFF) && (play->transitionMode == TRANS_MODE_OFF) && !Play_InCsMode(play)) {
                 bool hasLens = false;
-                for (int buttonIndex = 1; buttonIndex < (CVarGetInteger(CVAR_SETTING("DpadEquips"), 0) != 0) ? ARRAY_COUNT(gSaveContext.equips.buttonItems) : 4; buttonIndex++) {
+                for (int buttonIndex = 1; buttonIndex < ((CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0) != 0) ? ARRAY_COUNT(gSaveContext.equips.buttonItems) : 4);
+                     buttonIndex++) {
                     if (gSaveContext.equips.buttonItems[buttonIndex] == ITEM_LENS) {
                         hasLens = true;
                         break;
@@ -4050,7 +4051,7 @@ void Interface_DrawEnemyHealthBar(TargetContext* targetCtx, PlayState* play) {
         Interface_CreateQuadVertexGroup(&sEnemyHealthVtx[12], -floorf(halfBarWidth) + endTexWidth, (-texHeight / 2) + 3,
                                         healthBarFill, 7, 0);
 
-        if (((!(player->stateFlags1 & PLAYER_STATE1_TEXT_ON_SCREEN)) || (actor != player->unk_664)) && targetCtx->unk_44 < 500.0f) {
+        if (((!(player->stateFlags1 & PLAYER_STATE1_TALKING)) || (actor != player->focusActor)) && targetCtx->unk_44 < 500.0f) {
             f32 slideInOffsetY = 0;
 
             // Slide in the health bar from edge of the screen (mimic the Z-Target triangles fly in)
@@ -5372,8 +5373,7 @@ void Interface_Draw(PlayState* play) {
         if (fullUi) {
             s16 PosX_RC;
             s16 PosY_RC;
-            //when not having a wallet (or infinite money) in rando, don't calculate the ruppe icon
-            if (!IS_RANDO || (Flags_GetRandomizerInf(RAND_INF_HAS_WALLET) && !Flags_GetRandomizerInf(RAND_INF_HAS_INFINITE_MONEY))) {
+            if (GameInteractor_Should(VB_RENDER_RUPEE_COUNTER, true)) {
                 // Rupee Icon
                 if (CVarGetInteger(CVAR_ENHANCEMENT("DynamicWalletIcon"), 0)) {
                     switch (CUR_UPG_VALUE(UPG_WALLET)) {
@@ -5444,14 +5444,10 @@ void Interface_Draw(PlayState* play) {
                     PosX_RC = PosX_RC_ori;
                 }
                 gDPSetPrimColor(OVERLAY_DISP++, 0, 0, rColor.r, rColor.g, rColor.b, interfaceCtx->magicAlpha);
-                // Draw Rupee icon. Hide in Boss Rush.
-                if (!IS_BOSS_RUSH) {
-                    OVERLAY_DISP = Gfx_TextureIA8(OVERLAY_DISP, gRupeeCounterIconTex, 16, 16, PosX_RC, PosY_RC, 16, 16, 1 << 10, 1 << 10);
-                }
+                OVERLAY_DISP = Gfx_TextureIA8(OVERLAY_DISP, gRupeeCounterIconTex, 16, 16, PosX_RC, PosY_RC, 16, 16, 1 << 10, 1 << 10);
             }
 
-            //when having the skeleton key in rando, don't render the small key counter
-            if (!Flags_GetRandomizerInf(RAND_INF_HAS_SKELETON_KEY)) {
+            if (GameInteractor_Should(VB_RENDER_KEY_COUNTER, true)) {
                 switch (play->sceneNum) {
                     case SCENE_FOREST_TEMPLE:
                     case SCENE_FIRE_TEMPLE:
@@ -5467,7 +5463,6 @@ void Interface_Draw(PlayState* play) {
                     case SCENE_GANONS_TOWER_COLLAPSE_INTERIOR:
                     case SCENE_INSIDE_GANONS_CASTLE_COLLAPSE:
                     case SCENE_TREASURE_BOX_SHOP:
-
                         if (gSaveContext.inventory.dungeonKeys[gSaveContext.mapIndex] >= 0) {
                             s16 X_Margins_SKC;
                             s16 Y_Margins_SKC;
@@ -5533,49 +5528,47 @@ void Interface_Draw(PlayState* play) {
                 }
             }
 
-            // Rupee Counter
-            gDPPipeSync(OVERLAY_DISP++);
+            if (GameInteractor_Should(VB_RENDER_RUPEE_COUNTER, true)) {
+                // Rupee Counter
+                gDPPipeSync(OVERLAY_DISP++);
 
-            if (gSaveContext.rupees == CUR_CAPACITY(UPG_WALLET)) {
-                gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 120, 255, 0, interfaceCtx->magicAlpha);
-            } else if (gSaveContext.rupees != 0) {
-                gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, interfaceCtx->magicAlpha);
-            } else {
-                gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 100, 100, 100, interfaceCtx->magicAlpha);
-            }
+                if (gSaveContext.rupees == CUR_CAPACITY(UPG_WALLET)) {
+                    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 120, 255, 0, interfaceCtx->magicAlpha);
+                } else if (gSaveContext.rupees != 0) {
+                    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, interfaceCtx->magicAlpha);
+                } else {
+                    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 100, 100, 100, interfaceCtx->magicAlpha);
+                }
 
-            gDPSetCombineLERP(OVERLAY_DISP++, 0, 0, 0, PRIMITIVE, TEXEL0, 0, PRIMITIVE, 0, 0, 0, 0, PRIMITIVE, TEXEL0, 0,
-                              PRIMITIVE, 0);
+                gDPSetCombineLERP(OVERLAY_DISP++, 0, 0, 0, PRIMITIVE, TEXEL0, 0, PRIMITIVE, 0, 0, 0, 0, PRIMITIVE, TEXEL0, 0,
+                                  PRIMITIVE, 0);
 
-            interfaceCtx->counterDigits[0] = interfaceCtx->counterDigits[1] = 0;
-            interfaceCtx->counterDigits[2] = gSaveContext.rupees;
+                interfaceCtx->counterDigits[0] = interfaceCtx->counterDigits[1] = 0;
+                interfaceCtx->counterDigits[2] = gSaveContext.rupees;
 
-            if ((interfaceCtx->counterDigits[2] > 9999) || (interfaceCtx->counterDigits[2] < 0)) {
-                interfaceCtx->counterDigits[2] &= 0xDDD;
-            }
+                if ((interfaceCtx->counterDigits[2] > 9999) || (interfaceCtx->counterDigits[2] < 0)) {
+                    interfaceCtx->counterDigits[2] &= 0xDDD;
+                }
 
-            while (interfaceCtx->counterDigits[2] >= 100) {
-                interfaceCtx->counterDigits[0]++;
-                interfaceCtx->counterDigits[2] -= 100;
-            }
+                while (interfaceCtx->counterDigits[2] >= 100) {
+                    interfaceCtx->counterDigits[0]++;
+                    interfaceCtx->counterDigits[2] -= 100;
+                }
 
-            while (interfaceCtx->counterDigits[2] >= 10) {
-                interfaceCtx->counterDigits[1]++;
-                interfaceCtx->counterDigits[2] -= 10;
-            }
+                while (interfaceCtx->counterDigits[2] >= 10) {
+                    interfaceCtx->counterDigits[1]++;
+                    interfaceCtx->counterDigits[2] -= 10;
+                }
 
-            svar2 = rupeeDigitsFirst[CUR_UPG_VALUE(UPG_WALLET)];
-            svar5 = rupeeDigitsCount[CUR_UPG_VALUE(UPG_WALLET)];
+                svar2 = rupeeDigitsFirst[CUR_UPG_VALUE(UPG_WALLET)];
+                svar5 = rupeeDigitsCount[CUR_UPG_VALUE(UPG_WALLET)];
 
-            // Draw Rupee Counter. Hide in Boss Rush and when not having a wallet in rando.
-            if (!IS_BOSS_RUSH && (!IS_RANDO || Flags_GetRandomizerInf(RAND_INF_HAS_WALLET))) {
                 for (svar1 = 0, svar3 = 16; svar1 < svar5; svar1++, svar2++, svar3 += 8) {
                     OVERLAY_DISP = Gfx_TextureI8(OVERLAY_DISP, ((u8*)digitTextures[interfaceCtx->counterDigits[svar2]]),
                                                  8, 16, PosX_RC + svar3, PosY_RC, 8, 16, 1 << 10, 1 << 10);
                 }
             }
-        }
-        else {
+        } else {
             // Make sure item counts have black backgrounds
             gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 0, 0, 0, interfaceCtx->magicAlpha);
             gDPSetEnvColor(OVERLAY_DISP++, 0, 0, 0, 0);
@@ -5735,7 +5728,7 @@ void Interface_Draw(PlayState* play) {
             Interface_DrawAmmoCount(play, 3, interfaceCtx->cRightAlpha);
         }
 
-        if (CVarGetInteger(CVAR_SETTING("DpadEquips"), 0) != 0) {
+        if (CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0) != 0) {
             // DPad is only greyed-out when all 4 DPad directions are too
             uint16_t dpadAlpha =
                 MAX(MAX(MAX(interfaceCtx->dpadUpAlpha, interfaceCtx->dpadDownAlpha), interfaceCtx->dpadLeftAlpha),

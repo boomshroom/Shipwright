@@ -1277,7 +1277,7 @@ void Draw_Placements(){
     C_Button_Dropdown("C Button Down position", "tablecdbtn", "C Button Down settings", "C Button Down", CVAR_COSMETIC("HUD.CDownButton"), CVAR_COSMETIC("HUD.CDownButton.PosType"), 0.87f);
     C_Button_Dropdown("C Button Left position", "tableclbtn", "C Button Left settings", "C Button Left", CVAR_COSMETIC("HUD.CLeftButton"), CVAR_COSMETIC("HUD.CLeftButton.PosType"), 0.87f);
     C_Button_Dropdown("C Button Right position", "tablecrbtn", "C Button Right settings", "C Button Right", CVAR_COSMETIC("HUD.CRightButton"), CVAR_COSMETIC("HUD.CRightButton.PosType"), 0.87f);
-    if (CVarGetInteger(CVAR_SETTING("DpadEquips"),0) && ImGui::CollapsingHeader("DPad items position")) {
+    if (CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0) && ImGui::CollapsingHeader("DPad items position")) {
         if (ImGui::BeginTable("tabledpaditems", 1, FlagsTable)) {
             ImGui::TableSetupColumn("DPad items settings", FlagsCell, TablesCellsWidth);
             Table_InitHeader(false);
@@ -1688,12 +1688,6 @@ static const char* colorSchemes[2] = {
 };
 
 void CosmeticsEditorWindow::DrawElement() {
-    ImGui::SetNextWindowSize(ImVec2(550, 520), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Cosmetics Editor", &mIsVisible)) {
-        ImGui::End();
-        return;
-    }
-
     ImGui::Text("Color Scheme");
     ImGui::SameLine();
     UIWidgets::EnhancementCombobox(CVAR_COSMETIC("DefaultColorScheme"), colorSchemes, COLORSCHEME_N64);
@@ -1812,7 +1806,6 @@ void CosmeticsEditorWindow::DrawElement() {
         }
         ImGui::EndTabBar();
     }
-    ImGui::End();
 }
 
 void RegisterOnLoadGameHook() {

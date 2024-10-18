@@ -97,7 +97,7 @@ void GiveLinksPocketItem() {
     if (Randomizer_GetSettingValue(RSK_LINKS_POCKET) != RO_LINKS_POCKET_NOTHING) {
         GetItemEntry getItemEntry = Randomizer_GetItemFromKnownCheck(RC_LINKS_POCKET, (GetItemID)RG_NONE);
         StartingItemGive(getItemEntry);
-        Rando::Context::GetInstance()->GetItemLocation(RC_LINKS_POCKET)->MarkAsObtained();
+        Rando::Context::GetInstance()->GetItemLocation(RC_LINKS_POCKET)->SetCheckStatus(RCSHOW_SAVED);
         // If we re-add the above, we'll get the item on save creation, now it's given on first load
         Flags_SetRandomizerInf(RAND_INF_LINKS_POCKET);
     }
@@ -327,12 +327,23 @@ extern "C" void Randomizer_InitSaveFile() {
         Flags_SetRandomizerInf(RAND_INF_HAS_WALLET);
     }
 
+    if (Randomizer_GetSettingValue(RSK_SHUFFLE_FISHING_POLE) == RO_GENERIC_OFF) {
+        Flags_SetRandomizerInf(RAND_INF_FISHING_POLE_FOUND);
+    }
+
     // Give Link's pocket item
     GiveLinksPocketItem();
 
     // shuffle adult trade quest
     if (Randomizer_GetSettingValue(RSK_SHUFFLE_ADULT_TRADE)) {
         gSaveContext.adultTradeItems = 0;
+    }
+
+    // remove One Time scrubs with scrubsanity off
+    if (Randomizer_GetSettingValue(RSK_SHUFFLE_SCRUBS) == RO_SCRUBS_OFF) {
+        Flags_SetRandomizerInf(RAND_INF_SCRUBS_PURCHASED_LW_DEKU_SCRUB_NEAR_BRIDGE);
+        Flags_SetRandomizerInf(RAND_INF_SCRUBS_PURCHASED_LW_DEKU_SCRUB_GROTTO_FRONT);
+        Flags_SetRandomizerInf(RAND_INF_SCRUBS_PURCHASED_HF_DEKU_SCRUB_GROTTO);
     }
 
     int startingAge = OTRGlobals::Instance->gRandoContext->GetSettings()->ResolvedStartingAge();

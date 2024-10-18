@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <set>
 
-#include "fill.hpp"
 #include "../randomizerTypes.h"
 #include "../context.h"
 #include "../logic.h"
@@ -12,12 +12,11 @@
 typedef bool (*ConditionFn)();
 
 // I hate this but every alternative I can think of right now is worse
-extern Rando::Context* randoCtx;
+extern Rando::Context* ctx;
 extern std::shared_ptr<Rando::Logic> logic;
 
 class EventAccess {
 public:
-
 
     explicit EventAccess(bool* event_, std::vector<ConditionFn> conditions_met_)
         : event(event_) {
@@ -53,7 +52,6 @@ public:
       time = true;
       age = true;
 
-      logic->UpdateHelpers();
       return ConditionsMet();
     }
 
@@ -131,24 +129,26 @@ protected:
     bool CanBuy() const;
 };
 
+bool CanBuyAnother(RandomizerCheck rc);
+
 namespace Rando {
     class Entrance;
     enum class EntranceType;
 }
 
-class Area {
+class Region {
 public:
-    Area();
-    Area(std::string regionName_, std::string scene_, RandomizerArea area,
+    Region();
+    Region(std::string regionName_, std::string scene_, std::set<RandomizerArea> areas,
          bool timePass_,
          std::vector<EventAccess> events_,
          std::vector<LocationAccess> locations_,
          std::list<Rando::Entrance> exits_);
-    ~Area();
+    ~Region();
 
     std::string regionName;
     std::string scene;
-    RandomizerArea area;
+    std::set<RandomizerArea> areas;
     bool timePass;
     std::vector<EventAccess> events;
     std::vector<LocationAccess> locations;
@@ -164,9 +164,11 @@ public:
     bool childNight = false;
     bool adultDay = false;
     bool adultNight = false;
-    bool addedToPool = false;
+    bool addedToPool = false;;
 
-    bool UpdateEvents(SearchMode mode);
+    void ApplyTimePass();
+
+    bool UpdateEvents();
 
     void AddExit(RandomizerRegion parentKey, RandomizerRegion newExitKey, ConditionFn condition);
 
@@ -199,19 +201,19 @@ public:
     //Check to see if an exit can be access as both ages at both times of day
     bool CheckAllAccess(RandomizerRegion exitKey);
 
-    RandomizerArea GetArea() const{
-        return area;
+    std::set<RandomizerArea> GetAllAreas() const{
+        return areas;
     }
 
-    void SetArea(RandomizerArea newArea) {
-        area = newArea;
+    void ReplaceAreas(std::set<RandomizerArea> newAreas) {
+        areas = newAreas;
     }
 
     //Here checks conditional access based on whether or not both ages have
     //access to this area. For example: if there are rocks that block a path
     //which both child and adult can access, adult having hammer can give
     //both child and adult access to the path.
-    bool HereCheck(ConditionFn condition) {
+    bool Here(ConditionFn condition) {
 
       //store current age variables
       bool pastAdult = logic->IsAdult;
@@ -221,14 +223,12 @@ public:
       logic->IsChild = Child();
       logic->IsAdult = Adult();
 
-      //update helpers and check condition as well as having at least child or adult access
-      logic->UpdateHelpers();
+      //heck condition as well as having at least child or adult access
       bool hereVal = condition() && (logic->IsAdult || logic->IsChild);
 
       //set back age variables
       logic->IsChild = pastChild;
       logic->IsAdult = pastAdult;
-      logic->UpdateHelpers();
 
       return hereVal;
     }
@@ -246,20 +246,20 @@ public:
     }
 };
 
-extern std::array<Area, RR_MAX> areaTable;
+extern std::array<Region, RR_MAX> areaTable;
 extern std::vector<EventAccess> grottoEvents;
 
-bool Here(const RandomizerRegion area, ConditionFn condition);
-bool CanPlantBean(const RandomizerRegion area);
-bool BothAges(const RandomizerRegion area);
-bool ChildCanAccess(const RandomizerRegion area);
-bool AdultCanAccess(const RandomizerRegion area);
-bool HasAccessTo(const RandomizerRegion area);
+bool Here(const RandomizerRegion region, ConditionFn condition); //RANDOTODO make a less stupid way to check own at either age than self referncing with this
+bool CanPlantBean(const RandomizerRegion region);
+bool BothAges(const RandomizerRegion region);
+bool ChildCanAccess(const RandomizerRegion region);
+bool AdultCanAccess(const RandomizerRegion region);
+bool HasAccessTo(const RandomizerRegion region);
 
 #define DAY_NIGHT_CYCLE true
 #define NO_DAY_NIGHT_CYCLE false
 
-namespace Areas {
+namespace Regions {
 
   extern void AccessReset();
   extern void ResetAllLocations();
@@ -267,29 +267,29 @@ namespace Areas {
   extern void DumpWorldGraph(std::string str);
 } //namespace Exits
 
-void  AreaTable_Init();
-Area* AreaTable(const RandomizerRegion areaKey);
+void  RegionTable_Init();
+Region* RegionTable(const RandomizerRegion regionKey);
 std::vector<Rando::Entrance*> GetShuffleableEntrances(Rando::EntranceType type, bool onlyPrimary = true);
 Rando::Entrance* GetEntrance(const std::string name);
 
 // Overworld
-void AreaTable_Init_LostWoods();
-void AreaTable_Init_HyruleField();
-void AreaTable_Init_CastleTown();
-void AreaTable_Init_Kakariko();
-void AreaTable_Init_DeathMountain();
-void AreaTable_Init_ZorasDomain();
-void AreaTable_Init_GerudoValley();
+void RegionTable_Init_LostWoods();
+void RegionTable_Init_HyruleField();
+void RegionTable_Init_CastleTown();
+void RegionTable_Init_Kakariko();
+void RegionTable_Init_DeathMountain();
+void RegionTable_Init_ZorasDomain();
+void RegionTable_Init_GerudoValley();
 // Dungeons
-void AreaTable_Init_DekuTree();
-void AreaTable_Init_DodongosCavern();
-void AreaTable_Init_JabuJabusBelly();
-void AreaTable_Init_ForestTemple();
-void AreaTable_Init_FireTemple();
-void AreaTable_Init_WaterTemple();
-void AreaTable_Init_SpiritTemple();
-void AreaTable_Init_ShadowTemple();
-void AreaTable_Init_BottomOfTheWell();
-void AreaTable_Init_IceCavern();
-void AreaTable_Init_GerudoTrainingGrounds();
-void AreaTable_Init_GanonsCastle();
+void RegionTable_Init_DekuTree();
+void RegionTable_Init_DodongosCavern();
+void RegionTable_Init_JabuJabusBelly();
+void RegionTable_Init_ForestTemple();
+void RegionTable_Init_FireTemple();
+void RegionTable_Init_WaterTemple();
+void RegionTable_Init_SpiritTemple();
+void RegionTable_Init_ShadowTemple();
+void RegionTable_Init_BottomOfTheWell();
+void RegionTable_Init_IceCavern();
+void RegionTable_Init_GerudoTrainingGrounds();
+void RegionTable_Init_GanonsCastle();

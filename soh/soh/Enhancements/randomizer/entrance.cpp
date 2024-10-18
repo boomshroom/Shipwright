@@ -1,15 +1,17 @@
 #include "entrance.h"
 
+#include "3drando/fill.hpp"
 #include "3drando/pool_functions.hpp"
 #include "3drando/item_pool.hpp"
+#include "../debugger/performanceTimer.h"
 
 #include <spdlog/spdlog.h>
 
 namespace Rando {
 EntranceLinkInfo NO_RETURN_ENTRANCE = { EntranceType::None, RR_NONE, RR_NONE, -1 };
 
-Entrance::Entrance(RandomizerRegion connectedRegion_, std::vector<ConditionFn> conditions_met_)
-    : connectedRegion(connectedRegion_) {
+Entrance::Entrance(RandomizerRegion connectedRegion_, std::vector<ConditionFn> conditions_met_, bool spreadsAreasWithPriority_)
+    : connectedRegion(connectedRegion_),  spreadsAreasWithPriority(spreadsAreasWithPriority_){
     originalConnectedRegion = connectedRegion_;
     conditions_met.resize(2);
     for (size_t i = 0; i < conditions_met_.size(); i++) {
@@ -38,12 +40,12 @@ bool Entrance::GetConditionsMet() const {
 }
 
 std::string Entrance::to_string() const {
-    return AreaTable(parentRegion)->regionName + " -> " + AreaTable(connectedRegion)->regionName;
+    return RegionTable(parentRegion)->regionName + " -> " + RegionTable(connectedRegion)->regionName;
 }
 
 void Entrance::SetName(std::string name_) {
     if (name_ == "") {
-        name = AreaTable(parentRegion)->regionName + " -> " + AreaTable(connectedRegion)->regionName;
+        name = RegionTable(parentRegion)->regionName + " -> " + RegionTable(connectedRegion)->regionName;
     } else {
         name = std::move(name_);
     }
@@ -70,21 +72,24 @@ void Entrance::printAgeTimeAccess() {
 }
 
 bool Entrance::ConditionsMet(bool allAgeTimes) const {
+  auto ctx = Rando::Context::GetInstance();
+  StartPerformanceTimer(PT_ENTRANCE_LOGIC);
+  Region* parent = RegionTable(parentRegion);
+  int conditionsMet = 0;
 
-    Area* parent = AreaTable(parentRegion);
-    int conditionsMet = 0;
+  if (allAgeTimes && !parent->AllAccess()) {
+      StopPerformanceTimer(PT_ENTRANCE_LOGIC);
+      return false;
+  }
 
-    if (allAgeTimes && !parent->AllAccess()) {
-        return false;
-    }
+  // check all possible day/night condition combinations
+  conditionsMet = (parent->childDay && CheckConditionAtAgeTime(logic->IsChild, logic->AtDay, allAgeTimes)) +
+                  (parent->childNight && CheckConditionAtAgeTime(logic->IsChild, logic->AtNight, allAgeTimes)) +
+                  (parent->adultDay && CheckConditionAtAgeTime(logic->IsAdult, logic->AtDay, allAgeTimes)) +
+                  (parent->adultNight && CheckConditionAtAgeTime(logic->IsAdult, logic->AtNight, allAgeTimes));
 
-    // check all possible day/night condition combinations
-    conditionsMet = (parent->childDay && CheckConditionAtAgeTime(logic->IsChild, logic->AtDay, allAgeTimes)) +
-                    (parent->childNight && CheckConditionAtAgeTime(logic->IsChild, logic->AtNight, allAgeTimes)) +
-                    (parent->adultDay && CheckConditionAtAgeTime(logic->IsAdult, logic->AtDay, allAgeTimes)) +
-                    (parent->adultNight && CheckConditionAtAgeTime(logic->IsAdult, logic->AtNight, allAgeTimes));
-
-    return conditionsMet && (!allAgeTimes || conditionsMet == 4);
+  StopPerformanceTimer(PT_ENTRANCE_LOGIC);
+  return conditionsMet && (!allAgeTimes || conditionsMet == 4);
 }
 
 uint32_t Entrance::Getuint32_t() const {
@@ -102,7 +107,6 @@ bool Entrance::CheckConditionAtAgeTime(bool& age, bool& time, bool passAnyway) c
     time = true;
     age = true;
 
-    logic->UpdateHelpers();
     return GetConditionsMet() && (connectedRegion != RR_NONE || passAnyway);
 }
 
@@ -114,8 +118,8 @@ RandomizerRegion Entrance::GetOriginalConnectedRegionKey() const {
     return originalConnectedRegion;
 }
 
-Area* Entrance::GetConnectedRegion() const {
-    return AreaTable(connectedRegion);
+Region* Entrance::GetConnectedRegion() const {
+    return RegionTable(connectedRegion);
 }
 
 void Entrance::SetParentRegion(RandomizerRegion newParent) {
@@ -126,8 +130,8 @@ RandomizerRegion Entrance::GetParentRegionKey() const {
     return parentRegion;
 }
 
-Area* Entrance::GetParentRegion() const {
-    return AreaTable(parentRegion);
+Region* Entrance::GetParentRegion() const {
+    return RegionTable(parentRegion);
 }
 
 void Entrance::SetNewEntrance(RandomizerRegion newRegion) {
@@ -204,11 +208,11 @@ Entrance* Entrance::GetReverse() const {
 
 void Entrance::Connect(RandomizerRegion newConnectedRegion) {
     connectedRegion = newConnectedRegion;
-    AreaTable(newConnectedRegion)->entrances.push_front(this);
+    RegionTable(newConnectedRegion)->entrances.push_front(this);
 }
 
 RandomizerRegion Entrance::Disconnect() {
-    AreaTable(connectedRegion)->entrances.remove_if([this](const auto entrance) { return this == entrance; });
+    RegionTable(connectedRegion)->entrances.remove_if([this](const auto entrance) { return this == entrance; });
     RandomizerRegion previouslyConnected = connectedRegion;
     connectedRegion = RR_NONE;
     return previouslyConnected;
@@ -220,10 +224,10 @@ void Entrance::BindTwoWay(Entrance* otherEntrance) {
 }
 
 Entrance* Entrance::GetNewTarget() {
-    AreaTable(RR_ROOT)->AddExit(RR_ROOT, connectedRegion, [] { return true; });
-    Entrance* targetEntrance = AreaTable(RR_ROOT)->GetExit(connectedRegion);
+    RegionTable(RR_ROOT)->AddExit(RR_ROOT, connectedRegion, [] { return true; });
+    Entrance* targetEntrance = RegionTable(RR_ROOT)->GetExit(connectedRegion);
     targetEntrance->SetReplacement(this);
-    targetEntrance->SetName(AreaTable(RR_ROOT)->regionName + " -> " + GetConnectedRegion()->regionName);
+    targetEntrance->SetName(RegionTable(RR_ROOT)->regionName + " -> " + GetConnectedRegion()->regionName);
     return targetEntrance;
 }
 
@@ -233,6 +237,10 @@ Entrance* Entrance::AssumeReachable() {
         Disconnect();
     }
     return assumed;
+}
+
+bool Entrance::DoesSpreadAreas(){
+  return spreadsAreasWithPriority;
 }
 
 EntranceShuffler::EntranceShuffler() {
@@ -250,7 +258,7 @@ void EntranceShuffler::SetNoRandomEntrances(bool noRandomEntrances) {
 
 // Construct entrance name from parent and connected region keys
 std::string EntranceNameByRegions(RandomizerRegion parentRegion, RandomizerRegion connectedRegion) {
-    return AreaTable(parentRegion)->regionName + " -> " + AreaTable(connectedRegion)->regionName;
+    return RegionTable(parentRegion)->regionName + " -> " + RegionTable(connectedRegion)->regionName;
 }
 
 void SetAllEntrancesData(std::vector<EntranceInfoPair>& entranceShuffleTable) {
@@ -261,7 +269,7 @@ void SetAllEntrancesData(std::vector<EntranceInfoPair>& entranceShuffleTable) {
         auto& returnEntry = entrancePair.second;
 
         // set data
-        Entrance* forwardEntrance = AreaTable(forwardEntry.parentRegion)->GetExit(forwardEntry.connectedRegion);
+        Entrance* forwardEntrance = RegionTable(forwardEntry.parentRegion)->GetExit(forwardEntry.connectedRegion);
         forwardEntrance->SetIndex(forwardEntry.index);
         forwardEntrance->SetType(forwardEntry.type);
         forwardEntrance->SetAsPrimary();
@@ -272,7 +280,7 @@ void SetAllEntrancesData(std::vector<EntranceInfoPair>& entranceShuffleTable) {
         }
 
         if (returnEntry.parentRegion != RR_NONE) {
-            Entrance* returnEntrance = AreaTable(returnEntry.parentRegion)->GetExit(returnEntry.connectedRegion);
+            Entrance* returnEntrance = RegionTable(returnEntry.parentRegion)->GetExit(returnEntry.connectedRegion);
             returnEntrance->SetIndex(returnEntry.index);
             returnEntrance->SetType(returnEntry.type);
             forwardEntrance->BindTwoWay(returnEntrance);
@@ -462,7 +470,7 @@ static bool ValidateWorld(Entrance* entrancePlaced) {
     // Conditions will be checked during the search and any that fail will be figured out
     // afterwards
     ctx->GetLogic()->Reset();
-    GetAccessibleLocations({}, SearchMode::ValidateWorld, RG_NONE, checkPoeCollectorAccess, checkOtherEntranceAccess);
+    ValidateEntrances(checkPoeCollectorAccess, checkOtherEntranceAccess);
 
     if (!ctx->GetOption(RSK_DECOUPLED_ENTRANCES)) {
         // Unless entrances are decoupled, we don't want the player to end up through certain entrances as the wrong age
@@ -518,47 +526,29 @@ static bool ValidateWorld(Entrance* entrancePlaced) {
         }
     }
 
-    if (ctx->GetOption(RSK_SHUFFLE_INTERIOR_ENTRANCES).IsNot(RO_INTERIOR_ENTRANCE_SHUFFLE_OFF) &&
-        ctx->GetOption(RSK_GOSSIP_STONE_HINTS).IsNot(RO_GOSSIP_STONES_NONE) &&
-        (entrancePlaced == nullptr || type == EntranceType::Interior || type == EntranceType::SpecialInterior)) {
-        // When cows are shuffled, ensure both Impa's House entrances are in the same hint area because the cow is
-        // reachable from both sides
-        if (ctx->GetOption(RSK_SHUFFLE_COWS)) {
-            auto impasHouseFrontHintRegion = areaTable[RR_KAK_IMPAS_HOUSE].GetArea();
-            auto impasHouseBackHintRegion = areaTable[RR_KAK_IMPAS_HOUSE_BACK].GetArea();
-            if (impasHouseFrontHintRegion != RA_NONE && impasHouseBackHintRegion != RA_NONE &&
-                impasHouseBackHintRegion != RA_LINKS_POCKET && impasHouseFrontHintRegion != RA_LINKS_POCKET &&
-                impasHouseBackHintRegion != impasHouseFrontHintRegion) {
-                auto message = "Kak Impas House entrances are not in the same hint area\n";
-                SPDLOG_DEBUG(message);
-                return false;
-            }
-        }
-    }
-
     // If all locations aren't reachable, that means that one of the conditions failed when searching
     if (!Rando::Context::GetInstance()->allLocationsReachable) {
         if (checkOtherEntranceAccess) {
             // At least one valid starting region with all basic refills should be reachable without using any items at
             // the beginning of the seed
-            if (!AreaTable(RR_KOKIRI_FOREST)->HasAccess() && !AreaTable(RR_KAKARIKO_VILLAGE)->HasAccess()) {
+            if (!RegionTable(RR_KOKIRI_FOREST)->HasAccess() && !RegionTable(RR_KAKARIKO_VILLAGE)->HasAccess()) {
                 SPDLOG_DEBUG("Invalid starting area\n");
                 return false;
             }
 
             // Check that a region where time passes is always reachable as both ages without having collected any items
-            if (!Areas::HasTimePassAccess(RO_AGE_CHILD) || !Areas::HasTimePassAccess(RO_AGE_ADULT)) {
+            if (!Regions::HasTimePassAccess(RO_AGE_CHILD) || !Regions::HasTimePassAccess(RO_AGE_ADULT)) {
                 SPDLOG_DEBUG("Time passing is not guaranteed as both ages\n");
                 return false;
             }
 
             // The player should be able to get back to ToT after going through time, without having collected any items
             // This is important to ensure that the player never loses access to the pedestal after going through time
-            if (ctx->GetSettings()->ResolvedStartingAge() == RO_AGE_CHILD && !AreaTable(RR_TEMPLE_OF_TIME)->Adult()) {
+            if (ctx->GetSettings()->ResolvedStartingAge() == RO_AGE_CHILD && !RegionTable(RR_TEMPLE_OF_TIME)->Adult()) {
                 SPDLOG_DEBUG("Path to Temple of Time as adult is not guaranteed\n");
                 return false;
             } else if (ctx->GetSettings()->ResolvedStartingAge() == RO_AGE_ADULT &&
-                       !AreaTable(RR_TEMPLE_OF_TIME)->Child()) {
+                       !RegionTable(RR_TEMPLE_OF_TIME)->Child()) {
                 SPDLOG_DEBUG("Path to Temple of Time as child is not guaranteed\n");
                 return false;
             }
@@ -568,7 +558,7 @@ static bool ValidateWorld(Entrance* entrancePlaced) {
         // This is important to ensure that players can never lock their only bottles by filling them with Big Poes they
         // can't sell
         if (checkPoeCollectorAccess) {
-            if (!AreaTable(RR_MARKET_GUARD_HOUSE)->Adult()) {
+            if (!RegionTable(RR_MARKET_GUARD_HOUSE)->Adult()) {
                 SPDLOG_DEBUG("Big Poe Shop access is not guarenteed as adult\n");
                 return false;
             }
@@ -619,7 +609,7 @@ bool EntranceShuffler::ReplaceEntrance(Entrance* entrance, Entrance* target, std
         std::string ticks = std::to_string(svcGetSystemTick());
         auto message = "Dumping World Graph at " + ticks + "\n";
         // SPDLOG_DEBUG(message);
-        // Areas::DumpWorldGraph(ticks);
+        // Regions::DumpWorldGraph(ticks);
 #endif
         rollbacks.push_back(EntrancePair{ entrance, target });
         mCurNumRandomizedEntrances++;
@@ -629,7 +619,7 @@ bool EntranceShuffler::ReplaceEntrance(Entrance* entrance, Entrance* target, std
         std::string ticks = std::to_string(svcGetSystemTick());
         auto message = "Dumping World Graph at " + ticks + "\n";
         // SPDLOG_DEBUG(message);
-        // Areas::DumpWorldGraph(ticks);
+        // Regions::DumpWorldGraph(ticks);
 #endif
         if (entrance->GetConnectedRegionKey() != RR_NONE) {
             RestoreConnections(entrance, target);
@@ -765,7 +755,7 @@ static std::array<std::vector<Entrance*>, 2> SplitEntrancesByRequirements(std::v
         Rando::StaticData::RetrieveItem(unplacedItem).ApplyEffect();
     }
     // run a search to see what's accessible
-    GetAccessibleLocations({});
+    ReachabilitySearch({});
 
     for (Entrance* entrance : entrancesToSplit) {
         // if an entrance is accessible at all times of day by both ages, it's a soft entrance with no restrictions
@@ -782,42 +772,6 @@ static std::array<std::vector<Entrance*>, 2> SplitEntrancesByRequirements(std::v
     }
 
     return { restrictiveEntrances, softEntrances };
-}
-
-// Once the first entrance to Impas House has been placed, try to place the next one immediately to reduce chances of
-// failure.
-bool EntranceShuffler::PlaceOtherImpasHouseEntrance(std::vector<Entrance*> entrances,
-                                                    std::vector<Entrance*> targetEntrances,
-                                                    std::vector<EntrancePair>& rollbacks) {
-    // Get the other impas house entrance
-    auto otherImpaTargets = FilterFromPool(targetEntrances, [](const Entrance* target) {
-        return (target->GetConnectedRegionKey() == RR_KAK_IMPAS_HOUSE ||
-                target->GetConnectedRegionKey() == RR_KAK_IMPAS_HOUSE_BACK);
-    });
-    if (otherImpaTargets.empty()) {
-        return true;
-    }
-
-    Entrance* otherImpaTarget = otherImpaTargets[0];
-    auto m = "Now Placing Other Impa Target: " + otherImpaTarget->GetName() + "\n";
-    SPDLOG_DEBUG(m);
-    RandomizerRegion otherImpaRegion = otherImpaTarget->GetConnectedRegionKey() != RR_KAK_IMPAS_HOUSE_BACK
-                                           ? RR_KAK_IMPAS_HOUSE_BACK
-                                           : RR_KAK_IMPAS_HOUSE;
-    for (Entrance* entrance : entrances) {
-        // If the entrance is already connected or it doesn't have the same hint region as the already placed impas
-        // house entrance, then don't try to use it
-        if (entrance->GetConnectedRegionKey() != RR_NONE ||
-            (areaTable[otherImpaRegion].GetArea() != areaTable[entrance->GetParentRegionKey()].GetArea())) {
-            continue;
-        }
-        // If the placement succeeds, we return true
-        if (ReplaceEntrance(entrance, otherImpaTarget, rollbacks)) {
-            return true;
-        }
-    }
-    SPDLOG_DEBUG("No available entrances for placing other impa region.\n");
-    return false;
 }
 
 // Shuffle entrances by placing them instead of entrances in the provided target entrances list
@@ -839,18 +793,7 @@ bool EntranceShuffler::ShuffleEntrances(std::vector<Entrance*>& entrances, std::
                 continue;
             }
 
-            // Store whether or not we're about to attempt placing an entrance to Impas House
-            bool attemptedImpasHousePlacement = (target->GetConnectedRegionKey() == RR_KAK_IMPAS_HOUSE ||
-                                                 target->GetConnectedRegionKey() == RR_KAK_IMPAS_HOUSE_BACK);
-
             if (ReplaceEntrance(entrance, target, rollbacks)) {
-                // If shuffle cows is enabled and the last entrance was one to Impas House,
-                // then immediately attempt to place the other entrance to Impas House
-                if (ctx->GetOption(RSK_SHUFFLE_COWS) && attemptedImpasHousePlacement) {
-                    if (!PlaceOtherImpasHouseEntrance(entrances, targetEntrances, rollbacks)) {
-                        return false;
-                    }
-                }
                 break;
             }
         }
@@ -881,7 +824,7 @@ void EntranceShuffler::ShuffleEntrancePool(std::vector<Entrance*>& entrancePool,
             auto message = "Failed to connect entrances. Retrying " + std::to_string(retries) +
                            " more times.\nDumping World Graph at " + ticks + "\n";
             SPDLOG_DEBUG(message);
-            // Areas::DumpWorldGraph(ticks);
+            // Regions::DumpWorldGraph(ticks);
 #endif
         }
         retries--;

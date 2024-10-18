@@ -122,8 +122,8 @@ s32 EnXc_AnimIsFinished(EnXc* this) {
     return SkelAnime_Update(&this->skelAnime);
 }
 
-CsCmdActorAction* EnXc_GetCsCmd(PlayState* play, s32 npcActionIdx) {
-    CsCmdActorAction* action = NULL;
+CsCmdActorCue* EnXc_GetCsCmd(PlayState* play, s32 npcActionIdx) {
+    CsCmdActorCue* action = NULL;
 
     if (play->csCtx.state != 0) {
         action = play->csCtx.npcActions[npcActionIdx];
@@ -132,7 +132,7 @@ CsCmdActorAction* EnXc_GetCsCmd(PlayState* play, s32 npcActionIdx) {
 }
 
 s32 EnXc_CompareCsAction(EnXc* this, PlayState* play, u16 action, s32 npcActionIdx) {
-    CsCmdActorAction* csCmdActorAction = EnXc_GetCsCmd(play, npcActionIdx);
+    CsCmdActorCue* csCmdActorAction = EnXc_GetCsCmd(play, npcActionIdx);
 
     if (csCmdActorAction != NULL && csCmdActorAction->action == action) {
         return true;
@@ -141,7 +141,7 @@ s32 EnXc_CompareCsAction(EnXc* this, PlayState* play, u16 action, s32 npcActionI
 }
 
 s32 EnXc_CsActionsAreNotEqual(EnXc* this, PlayState* play, u16 action, s32 npcActionIdx) {
-    CsCmdActorAction* csCmdNPCAction = EnXc_GetCsCmd(play, npcActionIdx);
+    CsCmdActorCue* csCmdNPCAction = EnXc_GetCsCmd(play, npcActionIdx);
 
     if (csCmdNPCAction && csCmdNPCAction->action != action) {
         return true;
@@ -150,7 +150,7 @@ s32 EnXc_CsActionsAreNotEqual(EnXc* this, PlayState* play, u16 action, s32 npcAc
 }
 
 void func_80B3C588(EnXc* this, PlayState* play, u32 npcActionIdx) {
-    CsCmdActorAction* csCmdNPCAction = EnXc_GetCsCmd(play, npcActionIdx);
+    CsCmdActorCue* csCmdNPCAction = EnXc_GetCsCmd(play, npcActionIdx);
     Actor* thisx = &this->actor;
 
     if (csCmdNPCAction != NULL) {
@@ -164,7 +164,7 @@ void func_80B3C588(EnXc* this, PlayState* play, u32 npcActionIdx) {
 }
 
 void func_80B3C620(EnXc* this, PlayState* play, s32 npcActionIdx) {
-    CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, npcActionIdx);
+    CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, npcActionIdx);
     Vec3f* xcPos = &this->actor.world.pos;
     f32 startX;
     f32 startY;
@@ -298,15 +298,15 @@ s32 EnXc_MinuetCS(EnXc* this, PlayState* play) {
 
         if (z < -2225.0f) {
             if (!Play_InCsMode(play)) {
-                if (GameInteractor_Should(VB_PLAY_MINUET_OF_FOREST_CS, true, NULL)) {
+                if (GameInteractor_Should(VB_PLAY_MINUET_OF_FOREST_CS, true)) {
                     play->csCtx.segment = SEGMENTED_TO_VIRTUAL(&gMinuetCs);
                     gSaveContext.cutsceneTrigger = 1;
                 }
                 Flags_SetEventChkInf(EVENTCHKINF_LEARNED_MINUET_OF_FOREST);
-                if (GameInteractor_Should(VB_GIVE_ITEM_MINUET_OF_FOREST, true, NULL)) {
+                if (GameInteractor_Should(VB_GIVE_ITEM_MINUET_OF_FOREST, true)) {
                     Item_Give(play, ITEM_SONG_MINUET);
                 }
-                if (GameInteractor_Should(VB_PLAY_MINUET_OF_FOREST_CS, true, NULL)) {
+                if (GameInteractor_Should(VB_PLAY_MINUET_OF_FOREST_CS, true)) {
                     return true;
                 }
             }
@@ -335,15 +335,15 @@ s32 EnXc_BoleroCS(EnXc* this, PlayState* play) {
         if ((posRot->pos.x > -784.0f) && (posRot->pos.x < -584.0f) && (posRot->pos.y > 447.0f) &&
             (posRot->pos.y < 647.0f) && (posRot->pos.z > -446.0f) && (posRot->pos.z < -246.0f) &&
             !Play_InCsMode(play)) {
-            if (GameInteractor_Should(VB_PLAY_BOLERO_OF_FIRE_CS, true, NULL)) {
+            if (GameInteractor_Should(VB_PLAY_BOLERO_OF_FIRE_CS, true)) {
                 play->csCtx.segment = SEGMENTED_TO_VIRTUAL(&gDeathMountainCraterBoleroCs);
                 gSaveContext.cutsceneTrigger = 1;
             }
             Flags_SetEventChkInf(EVENTCHKINF_LEARNED_BOLERO_OF_FIRE);
-            if (GameInteractor_Should(VB_GIVE_ITEM_BOLERO_OF_FIRE, true, NULL)) {
+            if (GameInteractor_Should(VB_GIVE_ITEM_BOLERO_OF_FIRE, true)) {
                 Item_Give(play, ITEM_SONG_BOLERO);
             }
-            if (GameInteractor_Should(VB_PLAY_BOLERO_OF_FIRE_CS, true, NULL)) {
+            if (GameInteractor_Should(VB_PLAY_BOLERO_OF_FIRE_CS, true)) {
                 return true;
             }
         }
@@ -354,7 +354,7 @@ s32 EnXc_BoleroCS(EnXc* this, PlayState* play) {
 
 void EnXc_SetupSerenadeAction(EnXc* this, PlayState* play) {
     // Player is adult and does not have iron boots and has not learned Serenade
-    if (GameInteractor_Should(VB_SHIEK_PREPARE_TO_GIVE_SERENADE_OF_WATER, (!CHECK_OWNED_EQUIP(EQUIP_TYPE_BOOTS, EQUIP_INV_BOOTS_IRON) && !Flags_GetEventChkInf(EVENTCHKINF_LEARNED_SERENADE_OF_WATER)) && LINK_IS_ADULT, NULL)) {
+    if (GameInteractor_Should(VB_SHIEK_PREPARE_TO_GIVE_SERENADE_OF_WATER, (!CHECK_OWNED_EQUIP(EQUIP_TYPE_BOOTS, EQUIP_INV_BOOTS_IRON) && !Flags_GetEventChkInf(EVENTCHKINF_LEARNED_SERENADE_OF_WATER)) && LINK_IS_ADULT)) {
         this->action = SHEIK_ACTION_SERENADE;
         osSyncPrintf("水のセレナーデ シーク誕生!!!!!!!!!!!!!!!!!!\n");
     } else {
@@ -367,18 +367,18 @@ s32 EnXc_SerenadeCS(EnXc* this, PlayState* play) {
     if (this->actor.params == SHEIK_TYPE_SERENADE) {
         Player* player = GET_PLAYER(play);
         s32 stateFlags = player->stateFlags1;
-        if (GameInteractor_Should(VB_BE_ELIGIBLE_FOR_SERENADE_OF_WATER, CHECK_OWNED_EQUIP(EQUIP_TYPE_BOOTS, EQUIP_INV_BOOTS_IRON) && !Flags_GetEventChkInf(EVENTCHKINF_LEARNED_SERENADE_OF_WATER), NULL) &&
+        if (GameInteractor_Should(VB_BE_ELIGIBLE_FOR_SERENADE_OF_WATER, CHECK_OWNED_EQUIP(EQUIP_TYPE_BOOTS, EQUIP_INV_BOOTS_IRON) && !Flags_GetEventChkInf(EVENTCHKINF_LEARNED_SERENADE_OF_WATER)) &&
             !(stateFlags & PLAYER_STATE1_IN_CUTSCENE) && !Play_InCsMode(play)) {
-            if (GameInteractor_Should(VB_PLAY_SERENADE_OF_WATER_CS, true, NULL)) {
+            if (GameInteractor_Should(VB_PLAY_SERENADE_OF_WATER_CS, true)) {
                 Cutscene_SetSegment(play, &gIceCavernSerenadeCs);
                 gSaveContext.cutsceneTrigger = 1;
             }
             Flags_SetEventChkInf(EVENTCHKINF_LEARNED_SERENADE_OF_WATER); // Learned Serenade of Water Flag
-            if (GameInteractor_Should(VB_GIVE_ITEM_SERENADE_OF_WATER, true, NULL)) {
+            if (GameInteractor_Should(VB_GIVE_ITEM_SERENADE_OF_WATER, true)) {
                 Item_Give(play, ITEM_SONG_SERENADE);
             }
             osSyncPrintf("ブーツを取った!!!!!!!!!!!!!!!!!!\n");
-            if (GameInteractor_Should(VB_PLAY_SERENADE_OF_WATER_CS, true, NULL)) {
+            if (GameInteractor_Should(VB_PLAY_SERENADE_OF_WATER_CS, true)) {
                 return true;
             }
         }
@@ -528,7 +528,7 @@ s32 sEnXcFlameSpawned = false;
 void EnXc_SpawnFlame(EnXc* this, PlayState* play) {
 
     if (!sEnXcFlameSpawned) {
-        CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, 0);
+        CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, 0);
         f32 xPos = npcAction->startPos.x;
         f32 yPos = npcAction->startPos.y;
         f32 zPos = npcAction->startPos.z;
@@ -540,7 +540,7 @@ void EnXc_SpawnFlame(EnXc* this, PlayState* play) {
 
 void EnXc_SetupFlamePos(EnXc* this, PlayState* play) {
     Vec3f* attachedPos;
-    CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, 0);
+    CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, 0);
 
     if (this->flameActor != NULL) {
         attachedPos = &this->flameActor->world.pos;
@@ -565,7 +565,7 @@ void EnXc_InitFlame(EnXc* this, PlayState* play) {
     s16 sceneNum = play->sceneNum;
 
     if (sceneNum == SCENE_DEATH_MOUNTAIN_CRATER) {
-        CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, 0);
+        CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, 0);
         if (npcAction != NULL) {
             s32 action = npcAction->action;
 
@@ -588,7 +588,7 @@ void EnXc_InitFlame(EnXc* this, PlayState* play) {
 
 void func_80B3D48C(EnXc* this, PlayState* play) {
     CutsceneContext* csCtx = &play->csCtx;
-    CsCmdActorAction* linkAction = csCtx->linkAction;
+    CsCmdActorCue* linkAction = csCtx->linkAction;
     s16 yaw;
 
     if (linkAction != NULL) {
@@ -603,7 +603,7 @@ void func_80B3D48C(EnXc* this, PlayState* play) {
 
 AnimationHeader* EnXc_GetCurrentHarpAnim(PlayState* play, s32 index) {
     AnimationHeader* animation = &gSheikPlayingHarp5Anim;
-    CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, index);
+    CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, index);
 
     if (npcAction != NULL) {
         u16 action = npcAction->action;
@@ -677,7 +677,7 @@ void EnXc_SetupFallFromSkyAction(EnXc* this, PlayState* play) {
     CutsceneContext* csCtx = &play->csCtx;
 
     if (csCtx->state != 0) {
-        CsCmdActorAction* npcAction = csCtx->npcActions[4];
+        CsCmdActorCue* npcAction = csCtx->npcActions[4];
 
         if (npcAction && npcAction->action == 2) {
             s32 pad;
@@ -752,7 +752,7 @@ void EnXc_SetupStoppedAction(EnXc* this) {
 }
 
 void func_80B3DAF0(EnXc* this, PlayState* play) {
-    CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, 4);
+    CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, 4);
     u16 action;
 
     if (npcAction &&
@@ -799,7 +799,7 @@ void func_80B3DCA8(EnXc* this, PlayState* play) {
     f32 frameCount;
 
     if (play->csCtx.state != 0) {
-        CsCmdActorAction* npcAction = play->csCtx.npcActions[4];
+        CsCmdActorCue* npcAction = play->csCtx.npcActions[4];
 
         if (npcAction != NULL && npcAction->action == 8) {
             frameCount = Animation_GetLastFrame(&gSheikInitialHarpAnim);
@@ -848,7 +848,7 @@ void func_80B3DE78(EnXc* this, s32 animFinished) {
 
 void EnXc_SetupReverseAccel(EnXc* this, PlayState* play) {
     if (play->csCtx.state != 0) {
-        CsCmdActorAction* npcAction = play->csCtx.npcActions[4];
+        CsCmdActorCue* npcAction = play->csCtx.npcActions[4];
 
         if (npcAction != NULL && npcAction->action == 4) {
             Animation_Change(&this->skelAnime, &gSheikWalkingAnim, -1.0f, Animation_GetLastFrame(&gSheikWalkingAnim),
@@ -900,7 +900,7 @@ void func_80B3E164(EnXc* this, PlayState* play) {
 
 void EnXc_SetupDisappear(EnXc* this, PlayState* play) {
     if (play->csCtx.state != 0) {
-        CsCmdActorAction* npcAction = play->csCtx.npcActions[4];
+        CsCmdActorCue* npcAction = play->csCtx.npcActions[4];
 
         if (npcAction != NULL && npcAction->action == 9) {
             s16 sceneNum = play->sceneNum;
@@ -1164,7 +1164,7 @@ void func_80B3EC0C(EnXc* this, PlayState* play) {
     CutsceneContext* csCtx = &play->csCtx;
 
     if (csCtx->state != 0) {
-        CsCmdActorAction* npcAction = csCtx->npcActions[4];
+        CsCmdActorCue* npcAction = csCtx->npcActions[4];
 
         if ((npcAction != NULL) && (npcAction->action != 1)) {
             PosRot* posRot = &this->actor.world;
@@ -1187,7 +1187,7 @@ void func_80B3EC90(EnXc* this, PlayState* play) {
     CutsceneContext* csCtx = &play->csCtx;
 
     if (csCtx->state != 0) {
-        CsCmdActorAction* npcAction = csCtx->npcActions[4];
+        CsCmdActorCue* npcAction = csCtx->npcActions[4];
 
         if (npcAction != NULL && npcAction->action != 6) {
             func_80B3C9EC(this);
@@ -1413,7 +1413,7 @@ void EnXc_PlayDiveSFX(Vec3f* src, PlayState* play) {
 }
 
 void EnXc_LakeHyliaDive(PlayState* play) {
-    CsCmdActorAction* npcAction = npcAction = EnXc_GetCsCmd(play, 0);
+    CsCmdActorCue* npcAction = npcAction = EnXc_GetCsCmd(play, 0);
 
     if (npcAction != NULL) {
         Vec3f startPos;
@@ -1442,7 +1442,7 @@ void func_80B3F534(PlayState* play) {
 
 s32 D_80B41DAC = 1;
 void func_80B3F59C(EnXc* this, PlayState* play) {
-    CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, 0);
+    CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, 0);
 
     if (npcAction != NULL) {
         s32 action = npcAction->action;
@@ -1649,7 +1649,7 @@ void func_80B3FF0C(EnXc* this, PlayState* play) {
         CutsceneContext* csCtx = &play->csCtx;
 
         if (csCtx->state != 0) {
-            CsCmdActorAction* npcAction = play->csCtx.npcActions[4];
+            CsCmdActorCue* npcAction = play->csCtx.npcActions[4];
 
             if (npcAction != NULL) {
                 PosRot* posRot = &this->actor.world;
@@ -1984,7 +1984,7 @@ void func_80B40E88(EnXc* this) {
 }
 
 s32 EnXc_SetupNocturneState(Actor* thisx, PlayState* play) {
-    CsCmdActorAction* npcAction = EnXc_GetCsCmd(play, 4);
+    CsCmdActorCue* npcAction = EnXc_GetCsCmd(play, 4);
 
     if (npcAction != NULL) {
         s32 action = npcAction->action;
@@ -2185,17 +2185,17 @@ void EnXc_InitTempleOfTime(EnXc* this, PlayState* play) {
     if (LINK_IS_ADULT) {
         if (!Flags_GetEventChkInf(EVENTCHKINF_SHEIK_SPAWNED_AT_MASTER_SWORD_PEDESTAL)) {
             Flags_SetEventChkInf(EVENTCHKINF_SHEIK_SPAWNED_AT_MASTER_SWORD_PEDESTAL);
-            if (GameInteractor_Should(VB_PLAY_SHIEK_BLOCK_MASTER_SWORD_CS, true, NULL)) {
+            if (GameInteractor_Should(VB_PLAY_SHIEK_BLOCK_MASTER_SWORD_CS, true)) {
                 play->csCtx.segment = SEGMENTED_TO_VIRTUAL(gTempleOfTimeFirstAdultCs);
                 gSaveContext.cutsceneTrigger = 1;
             }
             func_80B3EBF0(this, play);
-        } else if (GameInteractor_Should(VB_BE_ELIGIBLE_FOR_PRELUDE_OF_LIGHT, !Flags_GetEventChkInf(EVENTCHKINF_LEARNED_PRELUDE_OF_LIGHT) && Flags_GetEventChkInf(EVENTCHKINF_USED_FOREST_TEMPLE_BLUE_WARP), NULL)) {
+        } else if (GameInteractor_Should(VB_BE_ELIGIBLE_FOR_PRELUDE_OF_LIGHT, !Flags_GetEventChkInf(EVENTCHKINF_LEARNED_PRELUDE_OF_LIGHT) && Flags_GetEventChkInf(EVENTCHKINF_USED_FOREST_TEMPLE_BLUE_WARP))) {
             Flags_SetEventChkInf(EVENTCHKINF_LEARNED_PRELUDE_OF_LIGHT);
-            if (GameInteractor_Should(VB_GIVE_ITEM_PRELUDE_OF_LIGHT, true, NULL)) {
+            if (GameInteractor_Should(VB_GIVE_ITEM_PRELUDE_OF_LIGHT, true)) {
                 Item_Give(play, ITEM_SONG_PRELUDE);
             }
-            if (GameInteractor_Should(VB_PLAY_PRELUDE_OF_LIGHT_CS, true, NULL)) {
+            if (GameInteractor_Should(VB_PLAY_PRELUDE_OF_LIGHT_CS, true)) {
                 play->csCtx.segment = SEGMENTED_TO_VIRTUAL(gTempleOfTimePreludeCs);
                 gSaveContext.cutsceneTrigger = 1;
             }

@@ -557,11 +557,6 @@ void DoorWarp1_ChildWarpOut(DoorWarp1* this, PlayState* play) {
             gSaveContext.nextCutsceneIndex = 0;
         }
 
-        if (IS_RANDO && (Randomizer_GetSettingValue(RSK_SHUFFLE_DUNGEON_ENTRANCES) != RO_DUNGEON_ENTRANCE_SHUFFLE_OFF ||
-            Randomizer_GetSettingValue(RSK_SHUFFLE_BOSS_ENTRANCES) != RO_BOSS_ROOM_ENTRANCE_SHUFFLE_OFF)) {
-            Entrance_OverrideBlueWarp();
-        }
-
         osSyncPrintf("\n\n\nおわりおわり");
         play->transitionTrigger = TRANS_TRIGGER_START;
         play->transitionType = TRANS_TYPE_FADE_WHITE_SLOW;
@@ -653,11 +648,6 @@ void DoorWarp1_RutoWarpOut(DoorWarp1* this, PlayState* play) {
             gSaveContext.nextCutsceneIndex = 0xFFF0;
         }
         play->nextEntranceIndex = ENTR_ZORAS_FOUNTAIN_0;
-
-        if (IS_RANDO && (Randomizer_GetSettingValue(RSK_SHUFFLE_DUNGEON_ENTRANCES) != RO_DUNGEON_ENTRANCE_SHUFFLE_OFF ||
-            Randomizer_GetSettingValue(RSK_SHUFFLE_BOSS_ENTRANCES) != RO_BOSS_ROOM_ENTRANCE_SHUFFLE_OFF)) {
-            Entrance_OverrideBlueWarp();
-        }
 
         play->transitionTrigger = TRANS_TRIGGER_START;
         play->transitionType = TRANS_TYPE_FADE_WHITE_SLOW;
@@ -759,9 +749,7 @@ void DoorWarp1_AdultWarpOut(DoorWarp1* this, PlayState* play) {
     this->warpTimer++;
 
     if (this->warpTimer > sWarpTimerTarget && gSaveContext.nextCutsceneIndex == 0xFFEF) {
-        if (IS_BOSS_RUSH) {
-            BossRush_HandleBlueWarp(play, this->actor.world.pos.x, this->actor.world.pos.z);
-        } else if (play->sceneNum == SCENE_FOREST_TEMPLE_BOSS) {
+        if (play->sceneNum == SCENE_FOREST_TEMPLE_BOSS) {
             if (GameInteractor_Should(VB_PLAY_BLUE_WARP_CS, !Flags_GetEventChkInf(EVENTCHKINF_USED_FOREST_TEMPLE_BLUE_WARP), EVENTCHKINF_USED_FOREST_TEMPLE_BLUE_WARP)) {
                 Flags_SetEventChkInf(EVENTCHKINF_USED_FOREST_TEMPLE_BLUE_WARP);
                 if (GameInteractor_Should(VB_GIVE_ITEM_FROM_BLUE_WARP, true, ITEM_MEDALLION_FOREST)) {
@@ -845,11 +833,6 @@ void DoorWarp1_AdultWarpOut(DoorWarp1* this, PlayState* play) {
                 }
                 gSaveContext.nextCutsceneIndex = 0;
             }
-        }
-
-        if (IS_RANDO && (Randomizer_GetSettingValue(RSK_SHUFFLE_DUNGEON_ENTRANCES) != RO_DUNGEON_ENTRANCE_SHUFFLE_OFF ||
-            Randomizer_GetSettingValue(RSK_SHUFFLE_BOSS_ENTRANCES) != RO_BOSS_ROOM_ENTRANCE_SHUFFLE_OFF)) {
-            Entrance_OverrideBlueWarp();
         }
 
         play->transitionTrigger = TRANS_TRIGGER_START;
